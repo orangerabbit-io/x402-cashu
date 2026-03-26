@@ -38,7 +38,7 @@ NUT-15 (multi-path payments) is deferred.
 
 ### Network Identifier
 
-`cashu:mainnet` — CAIP-2 style, consistent with `eip155:1` (EVM), `solana:mainnet` (SVM).
+`cashu:mainnet` — an x402 network identifier following CAIP-2 naming convention, consistent with `eip155:1` (EVM), `solana:mainnet` (SVM). Note: this is not a registered CAIP-2 namespace since Cashu is not a blockchain. The identifier is used solely within x402's scheme registration system.
 
 ### PaymentRequired (server -> client)
 
@@ -69,12 +69,14 @@ NUT-15 (multi-path payments) is deferred.
 | `network` | Always `"cashu:mainnet"` |
 | `amount` | Required payment amount as a string |
 | `asset` | Unit denomination: `"sat"`, `"usd"`, `"eur"`, etc. |
-| `payTo` | Primary mint URL — the mint the server will swap proofs at |
+| `payTo` | Server's preferred mint URL. Clients SHOULD source tokens from this mint when possible. Note: settlement (swap) always happens at the token's originating mint, which may differ from `payTo` if the client uses a different accepted mint. |
 | `extra.mints` | Array of accepted mint URLs. The client's token MUST come from one of these. |
-| `extra.unit` | Cashu unit denomination. Redundant with `asset` but explicit for Cashu tooling. |
+| `extra.unit` | Cashu unit denomination. MUST match `asset`. Exists for explicit compatibility with Cashu tooling that expects a `unit` field. If `asset` and `extra.unit` differ, the server MUST reject the configuration at startup. |
 | `extra.pubkey` | Optional. Server's public key for NUT-10/11 P2PK locking. If omitted, server accepts bearer tokens. |
 
 **Multi-unit support:** A server accepting both sat and usd publishes two `accepts` entries, each with its own mint list and unit. This scales naturally — adding a new unit is just another entry.
+
+**Mint URL normalization:** Mint URLs MUST be normalized before comparison: lowercase the hostname, remove default ports, strip trailing slashes. For example, `https://Mint.Example.COM/` normalizes to `https://mint.example.com`. Both the server's `extra.mints` list and the token's mint URL are normalized before the mint check.
 
 ### PaymentPayload (client -> server)
 
@@ -102,7 +104,26 @@ When the server receives a payment payload, it MUST perform these checks in orde
 5. **Proof state check** — Call `POST /v1/checkstate` at the mint (NUT-07) to verify all proofs are `UNSPENT`. MUST reject if any proof is spent or pending.
 6. **P2PK check** — If `extra.pubkey` was advertised, verify the token's spending conditions (NUT-10) lock to the server's public key with a valid signature (NUT-11). MUST reject if locked to a different key or unlocked when a pubkey was required. If `extra.pubkey` was not advertised, this check is skipped.
 
-Failure at any step returns HTTP 402 with the original PaymentRequired response so the client can retry.
+Failure at any step returns HTTP 402 with the original PaymentRequired response and an error reason so the client can diagnose and retry.
+
+### Error Codes
+
+The 402 response SHOULD include an `x402Error` field with one of these reason codes:
+
+| Code | Trigger |
+|------|---------|
+| `INVALID_TOKEN` | Token cannot be deserialized as TokenV4 |
+| `UNTRUSTED_MINT` | Token's mint is not in `extra.mints` |
+| `UNIT_MISMATCH` | Token's unit does not match `extra.unit` |
+| `INSUFFICIENT_AMOUNT` | Sum of proof amounts is less than required `amount` |
+| `PROOFS_SPENT` | One or more proofs are not in `UNSPENT` state |
+| `P2PK_MISMATCH` | Token spending conditions do not match server's pubkey |
+| `MINT_UNREACHABLE` | Server cannot reach the mint for verification or settlement |
+| `SWAP_FAILED` | Settlement swap failed at the mint |
+
+### Overpayment
+
+If the client sends proofs totaling more than the required `amount`, the server keeps the excess. No change is returned. Clients SHOULD construct tokens matching the required amount as closely as possible. Cashu proofs use power-of-2 denominations, so exact matches may require multiple proofs (e.g., 100 sats = 64 + 32 + 4).
 
 ### Replay Protection
 
@@ -112,7 +133,7 @@ The mint is the sole source of truth for proof state. No server-side replay cach
 
 After verification passes:
 
-1. **Swap** — Call `POST /v1/swap` at the token's mint (NUT-03) with the received proofs, requesting fresh outputs in the server's keyset. This atomically claims the tokens — the original proofs are now spent at the mint.
+1. **Swap** — Call `POST /v1/swap` at the token's originating mint (NUT-03) with the received proofs. The `@cashu/cashu-ts` library handles blinded output construction internally via `CashuWallet.receive()`. This atomically claims the tokens — the original proofs are now spent at the mint.
 2. **Store** — Persist the fresh proofs via the `ProofStore` interface. Storage backend is the server operator's concern.
 3. **Respond** — Return success to the middleware, which serves the protected resource.
 
@@ -130,7 +151,7 @@ The package ships with a no-op default. Operators provide their own implementati
 
 ### Future: Auto-Melt
 
-The spec documents an optional post-settlement melt flow: after swapping, the server immediately converts fresh proofs to a Lightning payment via `POST /v1/melt` (NUT-05). This is not implemented in v1 but is a defined extension point for operators who do not want to hold ecash.
+The spec documents an optional post-settlement melt flow: after swapping, the server immediately converts fresh proofs to a Lightning payment via `POST /v1/melt` (NUT-05). This is not implemented in v1 but is a defined extension point for operators who do not want to hold ecash. Note: melt operations may incur Lightning routing fees, which are separate from the payment amount.
 
 ## Security Considerations
 
@@ -155,6 +176,19 @@ Cashu proofs are inherently single-use. Once swapped at the mint, the original p
 ### Settlement Atomicity
 
 The swap operation at the mint is atomic — it either succeeds (all proofs spent, fresh proofs issued) or fails (no state change). There is no partial settlement.
+
+### Keyset Validation
+
+The server SHOULD verify that the token's proofs reference active keysets at the mint. Proofs referencing revoked or unknown keysets MUST be rejected. In practice, `@cashu/cashu-ts` validates keysets during the swap operation, so explicit keyset checking is handled by the library.
+
+### Mint Communication Timeouts
+
+Verification and settlement involve HTTP calls to external mints. The server MUST enforce timeouts on mint communication:
+
+- Mint calls (checkstate, swap) SHOULD time out within a reasonable fraction of `maxTimeoutSeconds` to leave room for response processing.
+- If a mint is unreachable or times out, the server returns 402 with error code `MINT_UNREACHABLE`.
+- The server MUST NOT retry failed mint calls within a single payment attempt. The client can retry with a fresh request.
+- If checkstate succeeds but swap fails due to timeout, the proofs may or may not have been spent at the mint. The server returns 402 with `SWAP_FAILED`. The client can check proof state and retry if proofs are still unspent.
 
 ## Operating Modes
 
@@ -191,6 +225,10 @@ Client                    Server                 Facilitator              Mint
   |-- GET /resource ------->|                         |                     |
   |   + PAYMENT-SIGNATURE   |                         |                     |
   |   (Cashu token)         |                         |                     |
+  |                         |-- POST /verify -------->|                     |
+  |                         |                         |-- POST /v1/check -->|
+  |                         |<-- verify result -------|                     |
+  |                         |                         |                     |
   |                         |-- POST /settle -------->|                     |
   |                         |                         |-- POST /v1/melt --->|
   |                         |                         |<-- melt result -----|
@@ -258,7 +296,11 @@ Registers the scheme with CAIP identifier `cashu:mainnet` using the x402 plugin 
 |-----------|------|
 | `SchemeNetworkFacilitator` | `verify()` and `settle()` methods, `caipFamily: "cashu"` |
 | `SchemeNetworkServer` | `enhancePaymentRequirements()` populates `extra` fields; `parsePrice()` handles unit conversion |
-| `SchemeNetworkClient` | `createPaymentPayload()` selects proofs, applies P2PK locking if needed, serializes TokenV4 |
+| `SchemeNetworkClient` | `createPaymentPayload()` selects proofs from a provided `CashuWallet` instance, applies P2PK locking if server pubkey present, serializes TokenV4 |
+
+### Client Implementation
+
+The `SchemeNetworkClient` expects the caller to provide a pre-funded `CashuWallet` instance (from `@cashu/cashu-ts`). The scheme does not manage wallet state — it selects proofs from the wallet that match the requested amount and mint, optionally locks them via P2PK, and serializes the result as a TokenV4 string. Wallet funding (minting tokens from Lightning) is the client application's responsibility.
 
 ## Testing Strategy
 

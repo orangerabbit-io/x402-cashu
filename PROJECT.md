@@ -88,7 +88,7 @@ Server doesn't need to know about Cashu at all. Facilitator acts as a Cashu-to-L
 
 ### Verification
 
-- Check proofs are valid at the mint (`POST /v1/check`)
+- Check proofs are valid at the mint (`POST /v1/checkstate`)
 - Verify total amount meets requirement
 - Verify token unit matches requested asset
 - Verify token mint is in the accepted mints list
