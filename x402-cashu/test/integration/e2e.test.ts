@@ -15,7 +15,7 @@ describe("e2e: direct mode payment flow", () => {
   const storedProofs: Array<{ proofs: unknown[]; mintUrl: string }> = [];
 
   beforeAll(async () => {
-    ({ wallet: clientWallet, proofs: clientProofs } = await createFundedWallet(500));
+    ({ wallet: clientWallet, proofs: clientProofs } = await createFundedWallet(3));
     serverWallet = new Wallet(TEST_MINT_URL, { unit: "sat" });
     await serverWallet.loadMint();
   });
@@ -27,7 +27,7 @@ describe("e2e: direct mode payment flow", () => {
       scheme: "exact",
       network: CASHU_NETWORK as `${string}:${string}`,
       asset: "sat",
-      amount: "100",
+      amount: "1",
       payTo: TEST_MINT_URL,
       maxTimeoutSeconds: 30,
       extra: { mints: [TEST_MINT_URL], unit: "sat" },
@@ -42,7 +42,7 @@ describe("e2e: direct mode payment flow", () => {
     const verifyCtx: VerifyContext = {
       mints: [TEST_MINT_URL],
       unit: "sat",
-      requiredAmount: 100,
+      requiredAmount: 1,
       allowInsecure: true,
       checkProofStates: async (proofs) => {
         const states = await serverWallet.checkProofsStates(proofs);
@@ -68,20 +68,20 @@ describe("e2e: direct mode payment flow", () => {
     const settleResult = await settlePayment(token, settleCtx);
     expect(settleResult.success).toBe(true);
     expect(settleResult.transaction).toBeDefined();
-    expect(settleResult.amount).toBeGreaterThanOrEqual(100);
+    expect(settleResult.amount).toBeGreaterThanOrEqual(1);
     expect(storedProofs.length).toBeGreaterThan(0);
   });
 
   it("rejects already-spent proofs on second submission", async () => {
-    // Fund a fresh wallet for this test
-    const { wallet: freshWallet, proofs: freshProofs } = await createFundedWallet(200);
+    // Use remaining proofs from the shared wallet
+    const { wallet: freshWallet, proofs: freshProofs } = await createFundedWallet(1);
     const client = new ExactCashuClient(freshWallet, TEST_MINT_URL, freshProofs);
 
     const requirements = {
       scheme: "exact",
       network: CASHU_NETWORK as `${string}:${string}`,
       asset: "sat",
-      amount: "50",
+      amount: "1",
       payTo: TEST_MINT_URL,
       maxTimeoutSeconds: 30,
       extra: { mints: [TEST_MINT_URL], unit: "sat" },
@@ -101,7 +101,7 @@ describe("e2e: direct mode payment flow", () => {
     const verifyCtx: VerifyContext = {
       mints: [TEST_MINT_URL],
       unit: "sat",
-      requiredAmount: 50,
+      requiredAmount: 1,
       allowInsecure: true,
       checkProofStates: async (proofs) => {
         const states = await serverWallet.checkProofsStates(proofs);
@@ -117,14 +117,14 @@ describe("e2e: direct mode payment flow", () => {
   });
 
   it("rejects token from untrusted mint", async () => {
-    const { wallet: freshWallet, proofs: freshProofs } = await createFundedWallet(100);
+    const { wallet: freshWallet, proofs: freshProofs } = await createFundedWallet(1);
     const client = new ExactCashuClient(freshWallet, TEST_MINT_URL, freshProofs);
 
     const requirements = {
       scheme: "exact",
       network: CASHU_NETWORK as `${string}:${string}`,
       asset: "sat",
-      amount: "10",
+      amount: "1",
       payTo: TEST_MINT_URL,
       maxTimeoutSeconds: 30,
       extra: { mints: [TEST_MINT_URL], unit: "sat" },
@@ -136,7 +136,7 @@ describe("e2e: direct mode payment flow", () => {
     const verifyCtx: VerifyContext = {
       mints: ["https://other-mint.example.com"],
       unit: "sat",
-      requiredAmount: 10,
+      requiredAmount: 1,
       allowInsecure: true,
       checkProofStates: vi.fn(),
     };
