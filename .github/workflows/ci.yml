@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: x402-cashu/package-lock.json
+
+      - name: Install dependencies
+        working-directory: x402-cashu
+        run: npm ci
+
+      - name: Type check
+        working-directory: x402-cashu
+        run: npx tsc --noEmit
+
+      - name: Unit tests
+        working-directory: x402-cashu
+        run: npx vitest run
+
+  integration:
+    runs-on: ubuntu-latest
+    services:
+      mint:
+        image: cashubtc/nutshell:latest
+        ports:
+          - 3338:3338
+        env:
+          MINT_LISTEN_HOST: "0.0.0.0"
+          MINT_LISTEN_PORT: "3338"
+          MINT_BACKEND_BOLT11_SAT: "FakeWallet"
+          MINT_PRIVATE_KEY: "TEST_PRIVATE_KEY_DO_NOT_USE_IN_PRODUCTION"
+        options: >-
+          --health-cmd "curl -f http://localhost:3338/v1/info"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: x402-cashu/package-lock.json
+
+      - name: Install dependencies
+        working-directory: x402-cashu
+        run: npm ci
+
+      - name: Integration tests
+        working-directory: x402-cashu
+        env:
+          TEST_MINT_URL: "http://localhost:3338"
+        run: npx vitest run --config vitest.integration.config.ts
