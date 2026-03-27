@@ -1,0 +1,18 @@
+# docker-compose.test.yml
+# Starts a Nutshell Cashu mint for integration testing.
+# Usage: docker compose -f docker-compose.test.yml up -d
+services:
+  mint:
+    image: cashubtc/nutshell:latest
+    ports:
+      - "3338:3338"
+    environment:
+      MINT_LISTEN_HOST: "0.0.0.0"
+      MINT_LISTEN_PORT: "3338"
+      MINT_BACKEND_BOLT11_SAT: "FakeWallet"
+      MINT_PRIVATE_KEY: "TEST_PRIVATE_KEY_DO_NOT_USE_IN_PRODUCTION"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3338/v1/info"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
