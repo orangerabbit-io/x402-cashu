@@ -11,6 +11,12 @@
 - [ ] PR 1: Submit spec (`specs/schemes/exact/scheme_exact_cashu.md`)
 - [ ] PR 2: Submit reference implementation (after spec approval)
 
+## Pre-Open Source Cleanup
+
+- [ ] Remove `CLAUDE.md`
+- [ ] Remove `docs/superpowers/` (design spec and implementation plan)
+- [ ] Remove Co-Authored-By lines from commits (optional — rebase or squash)
+
 ## Test Coverage Gaps
 
 - [ ] P2PK integration test — lock, verify, swap against real mint
