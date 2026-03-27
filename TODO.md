@@ -17,6 +17,11 @@
 - [ ] Remove `docs/superpowers/` (design spec and implementation plan)
 - [ ] Remove Co-Authored-By lines from commits (optional — rebase or squash)
 
+## Transport Adapters
+
+- [ ] MCP transport — Cashu payment via Model Context Protocol
+- [ ] A2A transport — Cashu payment via Agent-to-Agent protocol
+
 ## Test Coverage Gaps
 
 - [ ] P2PK integration test — lock, verify, swap against real mint
