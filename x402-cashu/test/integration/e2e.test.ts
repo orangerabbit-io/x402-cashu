@@ -9,19 +9,24 @@ import { CASHU_NETWORK, noopProofStore } from "../../src/shared/types.js";
 import { createFundedWallet, TEST_MINT_URL } from "./setup.js";
 
 describe("e2e: direct mode payment flow", () => {
-  let clientWallet: Wallet;
-  let clientProofs: Proof[];
+  let wallet: Wallet;
+  let allProofs: Proof[];
   let serverWallet: Wallet;
   const storedProofs: Array<{ proofs: unknown[]; mintUrl: string }> = [];
 
   beforeAll(async () => {
-    ({ wallet: clientWallet, proofs: clientProofs } = await createFundedWallet(3));
+    // Receive the funding token once — all tests share this pool of proofs
+    ({ wallet, proofs: allProofs } = await createFundedWallet(3));
     serverWallet = new Wallet(TEST_MINT_URL, { unit: "sat" });
     await serverWallet.loadMint();
   });
 
   it("verifies and settles a valid payment", async () => {
-    const client = new ExactCashuClient(clientWallet, TEST_MINT_URL, clientProofs);
+    // Split 1 sat from the shared proof pool
+    const { send: sendProofs, keep } = await wallet.send(1, allProofs);
+    allProofs = keep;
+
+    const client = new ExactCashuClient(wallet, TEST_MINT_URL, sendProofs);
 
     const requirements = {
       scheme: "exact",
@@ -33,11 +38,9 @@ describe("e2e: direct mode payment flow", () => {
       extra: { mints: [TEST_MINT_URL], unit: "sat" },
     };
 
-    // Client creates payment
     const { payload } = await client.createPaymentPayload(2, requirements);
     expect(payload.token).toBeDefined();
 
-    // Server verifies payment
     const token = parseToken(payload.token as string);
     const verifyCtx: VerifyContext = {
       mints: [TEST_MINT_URL],
@@ -55,7 +58,6 @@ describe("e2e: direct mode payment flow", () => {
     const verifyResult = await verifyPayment(token, verifyCtx);
     expect(verifyResult.isValid).toBe(true);
 
-    // Server settles payment
     const settleCtx: SettleContext = {
       receiveToken: async (t) => serverWallet.receive(t),
       proofStore: {
@@ -73,9 +75,10 @@ describe("e2e: direct mode payment flow", () => {
   });
 
   it("rejects already-spent proofs on second submission", async () => {
-    // Use remaining proofs from the shared wallet
-    const { wallet: freshWallet, proofs: freshProofs } = await createFundedWallet(1);
-    const client = new ExactCashuClient(freshWallet, TEST_MINT_URL, freshProofs);
+    const { send: sendProofs, keep } = await wallet.send(1, allProofs);
+    allProofs = keep;
+
+    const client = new ExactCashuClient(wallet, TEST_MINT_URL, sendProofs);
 
     const requirements = {
       scheme: "exact",
@@ -117,8 +120,9 @@ describe("e2e: direct mode payment flow", () => {
   });
 
   it("rejects token from untrusted mint", async () => {
-    const { wallet: freshWallet, proofs: freshProofs } = await createFundedWallet(1);
-    const client = new ExactCashuClient(freshWallet, TEST_MINT_URL, freshProofs);
+    const { send: sendProofs } = await wallet.send(1, allProofs);
+
+    const client = new ExactCashuClient(wallet, TEST_MINT_URL, sendProofs);
 
     const requirements = {
       scheme: "exact",
