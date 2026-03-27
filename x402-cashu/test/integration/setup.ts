@@ -2,14 +2,17 @@ import { Wallet } from "@cashu/cashu-ts";
 import type { Proof } from "@cashu/cashu-ts";
 
 export const TEST_MINT_URL =
-  process.env.TEST_MINT_URL ?? "http://localhost:3338";
+  process.env.TEST_MINT_URL ?? "https://mint.minibits.cash/Bitcoin";
 
 /**
- * Create a funded test wallet by minting tokens from the test mint.
- * Uses FakeWallet backend which auto-pays mint quotes.
+ * Create a funded test wallet from a pre-funded Cashu token.
  *
- * Returns both the wallet and the minted proofs, since cashu-ts v3 does not
- * expose a getProofs() method — proofs must be captured from mintProofs().
+ * Set TEST_FUNDING_TOKEN to a cashuB... token string with enough sats
+ * to cover all tests (~3 sats). The token is swapped for fresh proofs
+ * at the mint — no Lightning required.
+ *
+ * For local development with Docker (FakeWallet), omit TEST_FUNDING_TOKEN
+ * and set TEST_MINT_URL=http://localhost:3338 to use auto-funded mint quotes.
  */
 export async function createFundedWallet(
   amount: number,
@@ -18,10 +21,17 @@ export async function createFundedWallet(
   const wallet = new Wallet(TEST_MINT_URL, { unit });
   await wallet.loadMint();
 
-  // Create a mint quote (FakeWallet auto-pays)
+  const fundingToken = process.env.TEST_FUNDING_TOKEN;
+
+  if (fundingToken) {
+    // Swap the pre-funded token for fresh proofs
+    const proofs = await wallet.receive(fundingToken);
+    return { wallet, proofs };
+  }
+
+  // Fallback: FakeWallet auto-pay (Docker/local mint only)
   const quote = await wallet.createMintQuote(amount);
 
-  // Wait for quote to be paid (FakeWallet is instant but async)
   let paid = false;
   for (let i = 0; i < 10 && !paid; i++) {
     const status = await wallet.checkMintQuote(quote.quote);
@@ -33,7 +43,9 @@ export async function createFundedWallet(
   }
 
   if (!paid) {
-    throw new Error("Mint quote not paid — is the test mint running?");
+    throw new Error(
+      "Mint quote not paid. Set TEST_FUNDING_TOKEN for real mints, or use Docker with FakeWallet.",
+    );
   }
 
   const proofs = await wallet.mintProofs(amount, quote.quote);
