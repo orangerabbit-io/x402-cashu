@@ -17,6 +17,10 @@
 - [ ] Remove `docs/superpowers/` (design spec and implementation plan)
 - [ ] Remove Co-Authored-By lines from commits (optional — rebase or squash)
 
+## Schemes
+
+- [ ] `upto` scheme — variable pricing with change returned to client (server settles partial amount, returns excess as fresh token)
+
 ## Transport Adapters
 
 - [ ] MCP transport — Cashu payment via Model Context Protocol
