@@ -17,6 +17,7 @@ export { parseToken, normalizeMintUrl, sumProofs, assertHttps } from "./shared/t
 // Verification
 export {
   verifyPayment,
+  isMintTrusted,
   type VerifyResult,
   type VerifyContext,
   type ProofState,

@@ -47,7 +47,7 @@ await wallet.loadMint();
 
 const client = new ExactCashuClient(wallet, mintUrl, proofs);
 const { payload } = await client.createPaymentPayload(2, paymentRequirements);
-// Attach payload.token to PAYMENT-SIGNATURE header
+// Attach payload.token to X-Payment header
 ```
 
 ## Supported NUTs

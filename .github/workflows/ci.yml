@@ -26,6 +26,10 @@ jobs:
         working-directory: x402-cashu
         run: npx tsc --noEmit
 
+      - name: Build
+        working-directory: x402-cashu
+        run: npm run build
+
       - name: Unit tests
         working-directory: x402-cashu
         run: npx vitest run
