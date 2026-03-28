@@ -20,6 +20,8 @@ export interface CashuConfig {
   pubkey?: string;
   /** Storage backend for claimed proofs (optional, defaults to no-op) */
   proofStore?: ProofStore;
+  /** Timeout in milliseconds for outbound mint HTTP calls (default: 10000) */
+  timeoutMs?: number;
 }
 
 /** Interface for persisting claimed proofs after settlement */

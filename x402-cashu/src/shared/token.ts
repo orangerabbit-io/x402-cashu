@@ -4,11 +4,18 @@ import { CashuPaymentError, CashuErrorCode } from "./types.js";
 /**
  * Normalize a mint URL for consistent comparison.
  * Lowercases hostname, removes default HTTPS port, strips trailing slash.
+ *
+ * Note: Path components are intentionally NOT lowercased. URL paths are
+ * case-sensitive per RFC 3986 section 3.3, so `/Bitcoin` and `/bitcoin`
+ * are distinct resources.
  */
 export function normalizeMintUrl(url: string): string {
   const parsed = new URL(url);
   parsed.hostname = parsed.hostname.toLowerCase();
   if (parsed.port === "443" && parsed.protocol === "https:") {
+    parsed.port = "";
+  }
+  if (parsed.port === "80" && parsed.protocol === "http:") {
     parsed.port = "";
   }
   let normalized = parsed.toString();

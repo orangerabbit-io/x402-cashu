@@ -25,6 +25,11 @@ export class ExactCashuClient implements SchemeNetworkClient {
     private readonly proofs: Proof[],
   ) {}
 
+  /**
+   * Create a payment payload by selecting proofs for the required amount and
+   * encoding them as a Cashu TokenV4. If the server advertises a pubkey in
+   * `requirements.extra`, proofs are P2PK-locked to that key.
+   */
   async createPaymentPayload(
     x402Version: number,
     requirements: PaymentRequirements,

@@ -23,6 +23,28 @@
       "types": "./dist/client/index.d.ts"
     }
   },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "x402",
+    "cashu",
+    "ecash",
+    "micropayments",
+    "http-402",
+    "bitcoin"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/orangerabbit-io/x402-cashu.git",
+    "directory": "x402-cashu"
+  },
+  "homepage": "https://github.com/orangerabbit-io/x402-cashu#readme",
+  "bugs": {
+    "url": "https://github.com/orangerabbit-io/x402-cashu/issues"
+  },
   "scripts": {
     "build": "tsc",
     "test": "vitest run",

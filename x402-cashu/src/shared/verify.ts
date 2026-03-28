@@ -1,3 +1,4 @@
+import { CheckStateEnum } from "@cashu/cashu-ts";
 import type { Token, Proof } from "@cashu/cashu-ts";
 import { CashuErrorCode } from "./types.js";
 import { normalizeMintUrl, assertHttps, sumProofs } from "./token.js";
@@ -31,6 +32,34 @@ export interface VerifyContext {
 }
 
 /**
+ * Check whether a token's mint URL is in the accepted mints list,
+ * using normalized URL comparison.
+ */
+export function isMintTrusted(tokenMint: string, acceptedMints: string[]): boolean {
+  const normalizedToken = normalizeMintUrl(tokenMint);
+  // Re-normalizes acceptedMints on each call. Acceptable for small arrays
+  // (typical mint lists are 1–5 entries). Pre-normalizing would require
+  // carrying state from the facilitator constructor, adding complexity
+  // without meaningful performance gain.
+  return acceptedMints.map(normalizeMintUrl).includes(normalizedToken);
+}
+
+/**
+ * Validate a proof state string returned from a mint.
+ * Returns the value if valid, throws otherwise.
+ */
+export function validateProofState(state: string): "UNSPENT" | "SPENT" | "PENDING" {
+  if (
+    state === CheckStateEnum.UNSPENT ||
+    state === CheckStateEnum.SPENT ||
+    state === CheckStateEnum.PENDING
+  ) {
+    return state as "UNSPENT" | "SPENT" | "PENDING";
+  }
+  throw new Error(`Unknown proof state: ${state}`);
+}
+
+/**
  * Verify a Cashu payment token against requirements.
  * Performs the 6-step verification defined in the spec.
  */
@@ -49,9 +78,7 @@ export async function verifyPayment(
     };
   }
 
-  const tokenMint = normalizeMintUrl(token.mint);
-  const acceptedMints = ctx.mints.map(normalizeMintUrl);
-  if (!acceptedMints.includes(tokenMint)) {
+  if (!isMintTrusted(token.mint, ctx.mints)) {
     return {
       isValid: false,
       errorCode: CashuErrorCode.UNTRUSTED_MINT,
@@ -79,6 +106,7 @@ export async function verifyPayment(
   }
 
   // Step 5: Proof state check
+  const tokenMint = normalizeMintUrl(token.mint);
   let states: ProofState[];
   try {
     states = await ctx.checkProofStates(token.proofs, tokenMint);

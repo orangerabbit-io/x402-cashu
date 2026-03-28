@@ -25,6 +25,11 @@ vi.mock("@cashu/cashu-ts", () => ({
     }
     throw new Error("invalid token");
   }),
+  CheckStateEnum: {
+    UNSPENT: "UNSPENT",
+    PENDING: "PENDING",
+    SPENT: "SPENT",
+  },
 }));
 
 function makePayload(token: string): PaymentPayload {

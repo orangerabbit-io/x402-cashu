@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { verifyPayment, type VerifyContext } from "../../src/shared/verify.js";
+import { verifyPayment, validateProofState, type VerifyContext } from "../../src/shared/verify.js";
 import { CashuErrorCode } from "../../src/shared/types.js";
 import type { Token, Proof } from "@cashu/cashu-ts";
 
@@ -28,6 +28,22 @@ function makeContext(overrides?: Partial<VerifyContext>): VerifyContext {
     ...overrides,
   };
 }
+
+describe("validateProofState", () => {
+  it("returns valid states unchanged", () => {
+    expect(validateProofState("UNSPENT")).toBe("UNSPENT");
+    expect(validateProofState("SPENT")).toBe("SPENT");
+    expect(validateProofState("PENDING")).toBe("PENDING");
+  });
+
+  it("throws on unknown state", () => {
+    expect(() => validateProofState("INVALID")).toThrow("Unknown proof state: INVALID");
+  });
+
+  it("throws on empty string", () => {
+    expect(() => validateProofState("")).toThrow("Unknown proof state: ");
+  });
+});
 
 describe("verifyPayment", () => {
   it("passes with valid token meeting all requirements", async () => {

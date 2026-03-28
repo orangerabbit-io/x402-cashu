@@ -18,7 +18,7 @@ import express from "express";
 import { Wallet, getEncodedTokenV4 } from "@cashu/cashu-ts";
 import type { Proof } from "@cashu/cashu-ts";
 import { parseToken } from "../src/shared/token.js";
-import { verifyPayment, type VerifyContext } from "../src/shared/verify.js";
+import { verifyPayment, validateProofState, type VerifyContext } from "../src/shared/verify.js";
 import { settlePayment, type SettleContext } from "../src/shared/settle.js";
 import { CASHU_NETWORK } from "../src/shared/types.js";
 
@@ -74,7 +74,7 @@ app.get("/paid", async (req, res) => {
     checkProofStates: async (proofs) => {
       const states = await serverWallet.checkProofsStates(proofs);
       return states.map((s) => ({
-        state: s.state as "UNSPENT" | "SPENT" | "PENDING",
+        state: validateProofState(s.state),
       }));
     },
   };
@@ -121,6 +121,10 @@ app.get("/paid", async (req, res) => {
   console.log(`\nSettled ${amount} sat (tx: ${settleResult.transaction?.slice(0, 16)}...)`);
   console.log(`Change token (paste into wallet to recover):\n${changeToken}\n`);
 
+  // WARNING: Returning the change token in the response body is insecure for
+  // production use. Any intermediary (proxy, CDN, log aggregator) could capture
+  // and redeem it. In a real deployment, change should be returned via a secure
+  // side channel or the client should use P2PK-locked tokens.
   res.json({
     message: "Payment accepted!",
     content: "This is the paid content.",

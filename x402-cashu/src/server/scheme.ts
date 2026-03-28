@@ -21,6 +21,10 @@ export class ExactCashuServer implements SchemeNetworkServer {
     this.config = config;
   }
 
+  /**
+   * Parse a price into an `AssetAmount`. Accepts either a numeric value
+   * (interpreted as the configured unit) or an `{ amount, asset }` object.
+   */
   async parsePrice(price: Price, _network: Network): Promise<AssetAmount> {
     if (typeof price === "object" && "amount" in price && "asset" in price) {
       return { amount: String(price.amount), asset: price.asset };
@@ -28,6 +32,10 @@ export class ExactCashuServer implements SchemeNetworkServer {
     return { amount: String(price), asset: this.config.unit };
   }
 
+  /**
+   * Enhance payment requirements with Cashu-specific fields: accepted mints,
+   * unit, and optionally a P2PK pubkey for token locking.
+   */
   async enhancePaymentRequirements(
     paymentRequirements: PaymentRequirements,
     _supportedKind: { x402Version: number; scheme: string; network: Network; extra?: Record<string, unknown> },
