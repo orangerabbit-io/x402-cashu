@@ -43,14 +43,20 @@ export function assertHttps(url: string, allowInsecure = false): void {
 /**
  * Parse and validate a serialized Cashu token string.
  * Returns the decoded token or throws CashuPaymentError.
+ *
+ * @param keysetIds - Optional full keyset IDs for V4 short-ID resolution.
+ *   V4 tokens store truncated 8-byte keyset IDs; the decoder needs the full
+ *   IDs to map them back. Pass `wallet.keyChain.getAllKeysetIds()` after
+ *   loading the mint.
  */
-export function parseToken(tokenStr: string): Token {
+export function parseToken(tokenStr: string, keysetIds?: string[]): Token {
   try {
-    return getDecodedToken(tokenStr);
-  } catch {
+    return getDecodedToken(tokenStr, keysetIds);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
     throw new CashuPaymentError(
       CashuErrorCode.INVALID_TOKEN,
-      `INVALID_TOKEN: Failed to deserialize Cashu token`,
+      `INVALID_TOKEN: Failed to deserialize Cashu token: ${msg}`,
     );
   }
 }

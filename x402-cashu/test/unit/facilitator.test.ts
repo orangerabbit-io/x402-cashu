@@ -14,6 +14,7 @@ vi.mock("@cashu/cashu-ts", () => ({
     loadMint: mockLoadMint,
     checkProofsStates: mockCheckProofsStates,
     receive: mockReceive,
+    keyChain: { getAllKeysetIds: () => ["mock-keyset-id"] },
   })),
   getDecodedToken: vi.fn().mockImplementation((token: string) => {
     if (token === "valid-token") {

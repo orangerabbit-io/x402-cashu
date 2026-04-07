@@ -39,6 +39,8 @@ export class ExactCashuFacilitator implements SchemeNetworkFacilitator {
   private readonly config: CashuConfig;
   private readonly timeoutMs: number;
   private walletCache = new Map<string, Wallet>();
+  /** Cached keyset IDs from all trusted mints, for V4 token decoding. */
+  private knownKeysetIds: string[] = [];
 
   constructor(config: CashuConfig) {
     validateConfig(config);
@@ -86,9 +88,12 @@ export class ExactCashuFacilitator implements SchemeNetworkFacilitator {
     }
     const tokenStr = payload.payload.token;
 
+    // Ensure trusted mint wallets are loaded so we have keyset IDs for V4 decoding.
+    await this.ensureMintsLoaded();
+
     let token: Token;
     try {
-      token = parseToken(tokenStr);
+      token = parseToken(tokenStr, this.knownKeysetIds);
     } catch (error) {
       return {
         isValid: false,
@@ -162,9 +167,11 @@ export class ExactCashuFacilitator implements SchemeNetworkFacilitator {
     }
     const tokenStr = payload.payload.token;
 
+    await this.ensureMintsLoaded();
+
     let token: Token;
     try {
-      token = parseToken(tokenStr);
+      token = parseToken(tokenStr, this.knownKeysetIds);
     } catch (error) {
       return {
         success: false,
@@ -195,7 +202,7 @@ export class ExactCashuFacilitator implements SchemeNetworkFacilitator {
       proofStore: this.config.proofStore!,
     };
 
-    const result = await settlePayment(token, settleCtx);
+    const result = await settlePayment(token, settleCtx, tokenStr);
 
     if (!result.success) {
       return {
@@ -215,8 +222,19 @@ export class ExactCashuFacilitator implements SchemeNetworkFacilitator {
   }
 
   /**
+   * Ensure all trusted mints have loaded wallets and keyset IDs are cached.
+   * Called before token parsing so V4 short keyset IDs can be resolved.
+   */
+  private async ensureMintsLoaded(): Promise<void> {
+    for (const mintUrl of this.config.mints) {
+      await this.getWallet(mintUrl);
+    }
+  }
+
+  /**
    * Get or create a cached Wallet instance for the given mint URL.
    * Uses normalized URLs as cache keys and enforces a max cache size.
+   * Also collects keyset IDs for V4 token decoding.
    */
   private async getWallet(mintUrl: string): Promise<Wallet> {
     const key = normalizeMintUrl(mintUrl);
@@ -231,6 +249,14 @@ export class ExactCashuFacilitator implements SchemeNetworkFacilitator {
       const wallet = new Wallet(mintUrl, { unit: this.config.unit });
       await this.withTimeout(wallet.loadMint(), "loadMint");
       this.walletCache.set(key, wallet);
+
+      // Collect keyset IDs for V4 token short-ID resolution
+      const ids = wallet.keyChain.getAllKeysetIds();
+      for (const id of ids) {
+        if (!this.knownKeysetIds.includes(id)) {
+          this.knownKeysetIds.push(id);
+        }
+      }
     }
     return this.walletCache.get(key)!;
   }
