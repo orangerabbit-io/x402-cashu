@@ -1,8 +1,9 @@
 /**
- * Minimal x402 + Cashu direct-mode example using Express.
+ * Skeleton x402 + Cashu direct-mode example using Express.
  *
- * Demonstrates how to protect an endpoint with Cashu ecash payments.
- * The server accepts sat-denominated tokens from a configured mint.
+ * This is a starting point showing how to structure an x402 Cashu server.
+ * The payment middleware integration is stubbed out — see the TODO below
+ * for the full wiring with @x402/http-express.
  *
  * Prerequisites:
  *   - A running Cashu mint (e.g., Nutshell)
@@ -16,7 +17,7 @@ import {
   ExactCashuFacilitator,
   noopProofStore,
   type ProofStore,
-} from "x402-cashu";
+} from "../src/index.js";
 import type { Proof } from "@cashu/cashu-ts";
 
 const MINT_URL = process.env.MINT_URL ?? "https://mint.example.com";
@@ -41,7 +42,7 @@ const facilitator = new ExactCashuFacilitator({
 
 const app = express();
 
-// In a real deployment, wire up with x402 middleware:
+// TODO: Wire up with x402 middleware for production use:
 //
 //   import { paymentMiddleware } from "@x402/http-express";
 //   app.use("/paid", paymentMiddleware(resourceServer, {
@@ -49,6 +50,8 @@ const app = express();
 //     asset: "sat",
 //     network: "cashu:mainnet",
 //   }));
+//
+// Without the middleware, the /paid endpoint below is unprotected.
 
 app.get("/paid/content", (_req, res) => {
   res.json({

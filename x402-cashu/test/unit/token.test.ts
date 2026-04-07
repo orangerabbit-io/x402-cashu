@@ -20,6 +20,12 @@ describe("normalizeMintUrl", () => {
     );
   });
 
+  it("removes default port 80 for HTTP", () => {
+    expect(normalizeMintUrl("http://mint.example.com:80")).toBe(
+      "http://mint.example.com",
+    );
+  });
+
   it("preserves non-default port", () => {
     expect(normalizeMintUrl("https://mint.example.com:3338")).toBe(
       "https://mint.example.com:3338",
