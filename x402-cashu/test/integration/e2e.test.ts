@@ -7,6 +7,10 @@ import { parseToken } from "../../src/shared/token.js";
 import { noopProofStore } from "../../src/shared/types.js";
 import { createFundedWallet, TEST_MINT_URL } from "./setup.js";
 
+// Use amounts large enough to cover swap fees (1 sat per proof input).
+const FUND_AMOUNT = 100;
+const SEND_AMOUNT = 10;
+
 /** Encode proofs as a Cashu TokenV4 string for the test mint. */
 function encodeToken(proofs: Proof[], unit = "sat"): string {
   return getEncodedTokenV4({
@@ -24,14 +28,14 @@ describe("e2e: direct mode payment flow", () => {
   const storedProofs: Array<{ proofs: unknown[]; mintUrl: string }> = [];
 
   beforeAll(async () => {
-    ({ wallet, proofs: allProofs } = await createFundedWallet(3));
+    ({ wallet, proofs: allProofs } = await createFundedWallet(FUND_AMOUNT));
     serverWallet = new Wallet(TEST_MINT_URL, { unit: "sat" });
     await serverWallet.loadMint();
     keysetIds = serverWallet.keyChain.getAllKeysetIds();
   });
 
   it("verifies and settles a valid payment", async () => {
-    const { send: sendProofs, keep } = await wallet.send(1, allProofs);
+    const { send: sendProofs, keep } = await wallet.send(SEND_AMOUNT, allProofs);
     allProofs = keep;
 
     const tokenStr = encodeToken(sendProofs);
@@ -40,7 +44,7 @@ describe("e2e: direct mode payment flow", () => {
     const verifyCtx: VerifyContext = {
       mints: [TEST_MINT_URL],
       unit: "sat",
-      requiredAmount: 1,
+      requiredAmount: SEND_AMOUNT,
       allowInsecure: true,
       checkProofStates: async (proofs) => {
         const states = await serverWallet.checkProofsStates(proofs);
@@ -65,12 +69,12 @@ describe("e2e: direct mode payment flow", () => {
     const settleResult = await settlePayment(token, settleCtx, tokenStr);
     expect(settleResult.success).toBe(true);
     expect(settleResult.transaction).toBeDefined();
-    expect(settleResult.amount).toBeGreaterThanOrEqual(1);
+    expect(settleResult.amount).toBeGreaterThan(0);
     expect(storedProofs.length).toBeGreaterThan(0);
   });
 
   it("rejects already-spent proofs on second submission", async () => {
-    const { send: sendProofs, keep } = await wallet.send(1, allProofs);
+    const { send: sendProofs, keep } = await wallet.send(SEND_AMOUNT, allProofs);
     allProofs = keep;
 
     const tokenStr = encodeToken(sendProofs);
@@ -87,7 +91,7 @@ describe("e2e: direct mode payment flow", () => {
     const verifyCtx: VerifyContext = {
       mints: [TEST_MINT_URL],
       unit: "sat",
-      requiredAmount: 1,
+      requiredAmount: SEND_AMOUNT,
       allowInsecure: true,
       checkProofStates: async (proofs) => {
         const states = await serverWallet.checkProofsStates(proofs);
@@ -103,7 +107,7 @@ describe("e2e: direct mode payment flow", () => {
   });
 
   it("rejects token from untrusted mint", async () => {
-    const { send: sendProofs, keep } = await wallet.send(1, allProofs);
+    const { send: sendProofs, keep } = await wallet.send(SEND_AMOUNT, allProofs);
     allProofs = keep;
 
     const tokenStr = encodeToken(sendProofs);
@@ -112,7 +116,7 @@ describe("e2e: direct mode payment flow", () => {
     const verifyCtx: VerifyContext = {
       mints: ["https://other-mint.example.com"],
       unit: "sat",
-      requiredAmount: 1,
+      requiredAmount: SEND_AMOUNT,
       allowInsecure: true,
       checkProofStates: vi.fn(),
     };

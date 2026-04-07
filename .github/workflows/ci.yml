@@ -36,9 +36,6 @@ jobs:
 
   integration:
     runs-on: ubuntu-latest
-    # TODO: cashu-ts 3.6.x wallet.receive() sends empty outputs to the mint,
-    # causing "no outputs provided" errors. Non-blocking until resolved.
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
