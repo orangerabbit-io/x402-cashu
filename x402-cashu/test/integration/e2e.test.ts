@@ -1,47 +1,42 @@
 import { describe, it, expect, beforeAll, vi } from "vitest";
-import { Wallet } from "@cashu/cashu-ts";
+import { Wallet, getEncodedTokenV4 } from "@cashu/cashu-ts";
 import type { Proof } from "@cashu/cashu-ts";
 import { verifyPayment, type VerifyContext } from "../../src/shared/verify.js";
 import { settlePayment, type SettleContext } from "../../src/shared/settle.js";
 import { parseToken } from "../../src/shared/token.js";
-import { ExactCashuClient } from "../../src/client/scheme.js";
-import { CASHU_NETWORK, noopProofStore } from "../../src/shared/types.js";
+import { noopProofStore } from "../../src/shared/types.js";
 import { createFundedWallet, TEST_MINT_URL } from "./setup.js";
+
+/** Encode proofs as a Cashu TokenV4 string for the test mint. */
+function encodeToken(proofs: Proof[], unit = "sat"): string {
+  return getEncodedTokenV4({
+    mint: TEST_MINT_URL,
+    proofs,
+    unit,
+  });
+}
 
 describe("e2e: direct mode payment flow", () => {
   let wallet: Wallet;
   let allProofs: Proof[];
   let serverWallet: Wallet;
+  let keysetIds: string[];
   const storedProofs: Array<{ proofs: unknown[]; mintUrl: string }> = [];
 
   beforeAll(async () => {
-    // Receive the funding token once — all tests share this pool of proofs
     ({ wallet, proofs: allProofs } = await createFundedWallet(3));
     serverWallet = new Wallet(TEST_MINT_URL, { unit: "sat" });
     await serverWallet.loadMint();
+    keysetIds = serverWallet.keyChain.getAllKeysetIds();
   });
 
   it("verifies and settles a valid payment", async () => {
-    // Split 1 sat from the shared proof pool
     const { send: sendProofs, keep } = await wallet.send(1, allProofs);
     allProofs = keep;
 
-    const client = new ExactCashuClient(wallet, TEST_MINT_URL, sendProofs);
+    const tokenStr = encodeToken(sendProofs);
+    const token = parseToken(tokenStr, keysetIds);
 
-    const requirements = {
-      scheme: "exact",
-      network: CASHU_NETWORK as `${string}:${string}`,
-      asset: "sat",
-      amount: "1",
-      payTo: TEST_MINT_URL,
-      maxTimeoutSeconds: 30,
-      extra: { mints: [TEST_MINT_URL], unit: "sat" },
-    };
-
-    const { payload } = await client.createPaymentPayload(2, requirements);
-    expect(payload.token).toBeDefined();
-
-    const token = parseToken(payload.token as string);
     const verifyCtx: VerifyContext = {
       mints: [TEST_MINT_URL],
       unit: "sat",
@@ -67,7 +62,7 @@ describe("e2e: direct mode payment flow", () => {
       },
     };
 
-    const settleResult = await settlePayment(token, settleCtx);
+    const settleResult = await settlePayment(token, settleCtx, tokenStr);
     expect(settleResult.success).toBe(true);
     expect(settleResult.transaction).toBeDefined();
     expect(settleResult.amount).toBeGreaterThanOrEqual(1);
@@ -78,27 +73,15 @@ describe("e2e: direct mode payment flow", () => {
     const { send: sendProofs, keep } = await wallet.send(1, allProofs);
     allProofs = keep;
 
-    const client = new ExactCashuClient(wallet, TEST_MINT_URL, sendProofs);
-
-    const requirements = {
-      scheme: "exact",
-      network: CASHU_NETWORK as `${string}:${string}`,
-      asset: "sat",
-      amount: "1",
-      payTo: TEST_MINT_URL,
-      maxTimeoutSeconds: 30,
-      extra: { mints: [TEST_MINT_URL], unit: "sat" },
-    };
-
-    const { payload } = await client.createPaymentPayload(2, requirements);
-    const token = parseToken(payload.token as string);
+    const tokenStr = encodeToken(sendProofs);
+    const token = parseToken(tokenStr, keysetIds);
 
     // First settle succeeds
     const settleCtx: SettleContext = {
       receiveToken: async (t) => serverWallet.receive(t),
       proofStore: noopProofStore,
     };
-    await settlePayment(token, settleCtx);
+    await settlePayment(token, settleCtx, tokenStr);
 
     // Second verify with same token fails (proofs spent)
     const verifyCtx: VerifyContext = {
@@ -120,22 +103,11 @@ describe("e2e: direct mode payment flow", () => {
   });
 
   it("rejects token from untrusted mint", async () => {
-    const { send: sendProofs } = await wallet.send(1, allProofs);
+    const { send: sendProofs, keep } = await wallet.send(1, allProofs);
+    allProofs = keep;
 
-    const client = new ExactCashuClient(wallet, TEST_MINT_URL, sendProofs);
-
-    const requirements = {
-      scheme: "exact",
-      network: CASHU_NETWORK as `${string}:${string}`,
-      asset: "sat",
-      amount: "1",
-      payTo: TEST_MINT_URL,
-      maxTimeoutSeconds: 30,
-      extra: { mints: [TEST_MINT_URL], unit: "sat" },
-    };
-
-    const { payload } = await client.createPaymentPayload(2, requirements);
-    const token = parseToken(payload.token as string);
+    const tokenStr = encodeToken(sendProofs);
+    const token = parseToken(tokenStr, keysetIds);
 
     const verifyCtx: VerifyContext = {
       mints: ["https://other-mint.example.com"],

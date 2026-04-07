@@ -16,8 +16,12 @@ export interface SettleResult {
 
 /** Context needed for settlement — abstracts mint communication */
 export interface SettleContext {
-  /** Function to receive (swap) a token for fresh proofs */
-  receiveToken: (token: Token) => Promise<Proof[]>;
+  /**
+   * Function to receive (swap) a token for fresh proofs.
+   * Accepts either a Token object or encoded token string — callers should
+   * prefer passing the string to cashu-ts `wallet.receive()` for V4 compat.
+   */
+  receiveToken: (token: Token | string) => Promise<Proof[]>;
   /** Storage backend for claimed proofs */
   proofStore: ProofStore;
 }
@@ -25,15 +29,20 @@ export interface SettleContext {
 /**
  * Settle a Cashu payment by swapping proofs at the mint.
  * Returns fresh proofs and stores them via the ProofStore.
+ *
+ * @param tokenStr - Original encoded token string for the receive call.
+ *   cashu-ts 3.6+ requires a string (not Token object) for proper output
+ *   generation when receiving V4 tokens.
  */
 export async function settlePayment(
   token: Token,
   ctx: SettleContext,
+  tokenStr?: string,
 ): Promise<SettleResult> {
   let freshProofs: Proof[];
 
   try {
-    freshProofs = await ctx.receiveToken(token);
+    freshProofs = await ctx.receiveToken(tokenStr ?? token);
   } catch (error) {
     return {
       success: false,
