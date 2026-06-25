@@ -17,6 +17,15 @@ Cashu ecash payment scheme for the [x402 protocol](https://github.com/coinbase/x
 npm install x402-cashu
 ```
 
+## Requirements
+
+- **Node.js** >= 20
+- **[@cashu/cashu-ts](https://github.com/cashubtc/cashu-ts)** ^4.6.0
+- **[@x402/core](https://github.com/coinbase/x402)** ^2.16.0
+
+Both are declared as dependencies. The client example below imports
+`@cashu/cashu-ts` directly, so reference the same major version (4.x) in your app.
+
 ## Quick Start
 
 ### Server (Facilitator)
