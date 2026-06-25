@@ -11,14 +11,14 @@ function makeToken(): Token {
       { id: "keyset1", amount: 64, secret: "s1", C: "C1" },
       { id: "keyset1", amount: 32, secret: "s2", C: "C2" },
       { id: "keyset1", amount: 4, secret: "s3", C: "C3" },
-    ] as Proof[],
+    ] as unknown as Proof[],
   };
 }
 
 function makeContext(overrides?: Partial<SettleContext>): SettleContext {
   const freshProofs = [
     { id: "keyset1", amount: 100, secret: "fresh1", C: "Cfresh1" },
-  ] as Proof[];
+  ] as unknown as Proof[];
   return {
     receiveToken: vi.fn().mockResolvedValue(freshProofs),
     proofStore: { saveProofs: vi.fn().mockResolvedValue(undefined) },
@@ -51,7 +51,7 @@ describe("settlePayment", () => {
     const token = makeToken();
     const freshProofs = [
       { id: "keyset1", amount: 100, secret: "f1", C: "Cf1" },
-    ] as Proof[];
+    ] as unknown as Proof[];
     const ctx = makeContext({
       receiveToken: vi.fn().mockResolvedValue(freshProofs),
     });

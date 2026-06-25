@@ -4,18 +4,23 @@ import { CashuErrorCode, CASHU_NETWORK } from "../../src/shared/types.js";
 import type { Proof } from "@cashu/cashu-ts";
 import type { PaymentPayload, PaymentRequirements } from "@x402/core/types";
 
-// Mock @cashu/cashu-ts v3
+// Mock @cashu/cashu-ts
 const mockCheckProofsStates = vi.fn();
 const mockReceive = vi.fn();
 const mockLoadMint = vi.fn().mockResolvedValue(undefined);
 
 vi.mock("@cashu/cashu-ts", () => ({
-  Wallet: vi.fn().mockImplementation(() => ({
-    loadMint: mockLoadMint,
-    checkProofsStates: mockCheckProofsStates,
-    receive: mockReceive,
-    keyChain: { getAllKeysetIds: () => ["mock-keyset-id"] },
-  })),
+  // Regular function (not arrow) so it is constructable via `new Wallet(...)`.
+  Wallet: vi.fn().mockImplementation(function () {
+    return {
+      loadMint: mockLoadMint,
+      checkProofsStates: mockCheckProofsStates,
+      receive: mockReceive,
+      keyChain: { getAllKeysetIds: () => ["mock-keyset-id"] },
+    };
+  }),
+  // cashu-ts 4.x represents proof amounts as Amount value objects.
+  Amount: { from: (v: number | bigint | string) => ({ toNumber: () => Number(v) }) },
   getDecodedToken: vi.fn().mockImplementation((token: string) => {
     if (token === "valid-token") {
       return {
@@ -187,7 +192,7 @@ describe("ExactCashuFacilitator", () => {
     it("returns success after swap", async () => {
       const freshProofs = [
         { id: "k1", amount: 100, secret: "f1", C: "Cf1" },
-      ] as Proof[];
+      ] as unknown as Proof[];
       mockReceive.mockResolvedValue(freshProofs);
 
       const result = await facilitator.settle(

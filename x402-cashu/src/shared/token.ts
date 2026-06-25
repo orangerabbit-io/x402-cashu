@@ -1,4 +1,4 @@
-import { getDecodedToken, type Token } from "@cashu/cashu-ts";
+import { Amount, getDecodedToken, type Token } from "@cashu/cashu-ts";
 import { CashuPaymentError, CashuErrorCode } from "./types.js";
 
 /**
@@ -51,7 +51,7 @@ export function assertHttps(url: string, allowInsecure = false): void {
  */
 export function parseToken(tokenStr: string, keysetIds?: string[]): Token {
   try {
-    return getDecodedToken(tokenStr, keysetIds);
+    return getDecodedToken(tokenStr, keysetIds ?? []);
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     throw new CashuPaymentError(
@@ -65,5 +65,5 @@ export function parseToken(tokenStr: string, keysetIds?: string[]): Token {
  * Sum the total amount across all proofs in a token.
  */
 export function sumProofs(token: Token): number {
-  return token.proofs.reduce((sum, proof) => sum + proof.amount, 0);
+  return token.proofs.reduce((sum, proof) => sum + Amount.from(proof.amount).toNumber(), 0);
 }

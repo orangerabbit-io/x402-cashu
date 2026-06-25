@@ -11,7 +11,7 @@ function makeToken(overrides?: Partial<Token>): Token {
       { id: "keyset1", amount: 64, secret: "secret1", C: "C1" },
       { id: "keyset1", amount: 32, secret: "secret2", C: "C2" },
       { id: "keyset1", amount: 4, secret: "secret3", C: "C3" },
-    ] as Proof[],
+    ] as unknown as Proof[],
     ...overrides,
   };
 }
@@ -97,7 +97,7 @@ describe("verifyPayment", () => {
 
   it("rejects token with insufficient amount", async () => {
     const token = makeToken({
-      proofs: [{ id: "keyset1", amount: 32, secret: "s1", C: "C1" }] as Proof[],
+      proofs: [{ id: "keyset1", amount: 32, secret: "s1", C: "C1" }] as unknown as Proof[],
     });
     const ctx = makeContext();
     const result = await verifyPayment(token, ctx);

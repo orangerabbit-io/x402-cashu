@@ -1,3 +1,4 @@
+import { Amount } from "@cashu/cashu-ts";
 import type { Token, Proof } from "@cashu/cashu-ts";
 import type { ProofStore } from "./types.js";
 import { CashuErrorCode } from "./types.js";
@@ -57,7 +58,7 @@ export async function settlePayment(
     .join(":");
   const transaction = createHash("sha256").update(txData).digest("hex");
 
-  const totalAmount = freshProofs.reduce((sum, p) => sum + p.amount, 0);
+  const totalAmount = freshProofs.reduce((sum, p) => sum + Amount.from(p.amount).toNumber(), 0);
 
   // Store fresh proofs
   await ctx.proofStore.saveProofs(freshProofs, token.mint);

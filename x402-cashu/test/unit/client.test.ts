@@ -2,12 +2,12 @@ import { describe, it, expect, vi } from "vitest";
 import { ExactCashuClient } from "../../src/client/scheme.js";
 import type { Wallet, Proof } from "@cashu/cashu-ts";
 
-// Mock getEncodedTokenV4
+// Mock getEncodedToken (cashu-ts 4.x removed getEncodedTokenV4; V4 is the default)
 vi.mock("@cashu/cashu-ts", async (importOriginal) => {
   const original = await importOriginal() as Record<string, unknown>;
   return {
     ...original,
-    getEncodedTokenV4: vi.fn().mockReturnValue("cashuBencoded-token-string"),
+    getEncodedToken: vi.fn().mockReturnValue("cashuBencoded-token-string"),
   };
 });
 
@@ -16,7 +16,7 @@ describe("ExactCashuClient", () => {
     { id: "k1", amount: 64, secret: "s1", C: "C1" },
     { id: "k1", amount: 32, secret: "s2", C: "C2" },
     { id: "k1", amount: 4, secret: "s3", C: "C3" },
-  ] as Proof[];
+  ] as unknown as Proof[];
 
   function makeMockWallet(overrides?: Record<string, unknown>): Wallet {
     return {
@@ -25,7 +25,7 @@ describe("ExactCashuClient", () => {
           { id: "k1", amount: 64, secret: "s1", C: "C1" },
           { id: "k1", amount: 32, secret: "s2", C: "C2" },
           { id: "k1", amount: 4, secret: "s3", C: "C3" },
-        ] as Proof[],
+        ] as unknown as Proof[],
         keep: [] as Proof[],
       }),
       ...overrides,

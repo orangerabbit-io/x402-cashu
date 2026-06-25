@@ -30,11 +30,11 @@ export async function createFundedWallet(
   }
 
   // Fallback: FakeWallet auto-pay (Docker/local mint only)
-  const quote = await wallet.createMintQuote(amount);
+  const quote = await wallet.createMintQuoteBolt11(amount);
 
   let paid = false;
   for (let i = 0; i < 10 && !paid; i++) {
-    const status = await wallet.checkMintQuote(quote.quote);
+    const status = await wallet.checkMintQuoteBolt11(quote.quote);
     if (status.state === "PAID") {
       paid = true;
     } else {
@@ -48,6 +48,6 @@ export async function createFundedWallet(
     );
   }
 
-  const proofs = await wallet.mintProofs(amount, quote.quote);
+  const proofs = await wallet.mintProofsBolt11(amount, quote.quote);
   return { wallet, proofs };
 }

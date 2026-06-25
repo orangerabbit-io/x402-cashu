@@ -1,4 +1,4 @@
-import { getEncodedTokenV4 } from "@cashu/cashu-ts";
+import { getEncodedToken } from "@cashu/cashu-ts";
 import type { Wallet, Proof } from "@cashu/cashu-ts";
 import type {
   SchemeNetworkClient,
@@ -47,7 +47,7 @@ export class ExactCashuClient implements SchemeNetworkClient {
         })
       : await this.wallet.send(amount, this.proofs);
 
-    const token = getEncodedTokenV4({
+    const token = getEncodedToken({
       mint: this.mintUrl,
       proofs: sendProofs,
       unit,

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, vi } from "vitest";
-import { Wallet, getEncodedTokenV4 } from "@cashu/cashu-ts";
+import { Wallet, getEncodedToken } from "@cashu/cashu-ts";
 import type { Proof } from "@cashu/cashu-ts";
 import { verifyPayment, type VerifyContext } from "../../src/shared/verify.js";
 import { settlePayment, type SettleContext } from "../../src/shared/settle.js";
@@ -13,7 +13,7 @@ const SEND_AMOUNT = 10;
 
 /** Encode proofs as a Cashu TokenV4 string for the test mint. */
 function encodeToken(proofs: Proof[], unit = "sat"): string {
-  return getEncodedTokenV4({
+  return getEncodedToken({
     mint: TEST_MINT_URL,
     proofs,
     unit,
