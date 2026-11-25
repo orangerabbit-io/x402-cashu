@@ -1,6 +1,6 @@
 {
   "name": "x402-cashu",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Cashu ecash payment scheme for x402 protocol",
   "type": "module",
   "main": "dist/index.js",
@@ -52,8 +52,8 @@
     "test:integration": "vitest run --config vitest.integration.config.ts"
   },
   "dependencies": {
-    "@cashu/cashu-ts": "^4.6.0",
-    "@x402/core": "^2.16.0"
+    "@cashu/cashu-ts": "^4.14.0",
+    "@x402/core": "^2.32.0"
   },
   "devDependencies": {
     "@semantic-release/commit-analyzer": "^13.0.1",
