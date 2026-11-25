@@ -3,6 +3,7 @@ import { validateConfig } from "../shared/types.js";
 import type {
   SchemeNetworkServer,
   PaymentRequirements,
+  PaymentFlowConfig,
   Network,
   Price,
   AssetAmount,
@@ -14,6 +15,13 @@ import type {
  */
 export class ExactCashuServer implements SchemeNetworkServer {
   readonly scheme = "exact";
+  readonly defaultAssetTransferMethod = "default";
+  readonly paymentFlows: Readonly<Record<string, PaymentFlowConfig>> = {
+    default: {
+      supported: ["authorization"],
+      default: "authorization",
+    },
+  };
   private readonly config: CashuConfig;
 
   constructor(config: CashuConfig) {

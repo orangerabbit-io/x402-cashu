@@ -7,6 +7,17 @@ describe("ExactCashuServer", () => {
     unit: "sat",
   });
 
+  it("declares default asset transfer method and authorization payment flow", () => {
+    expect(server.scheme).toBe("exact");
+    expect(server.defaultAssetTransferMethod).toBe("default");
+    expect(server.paymentFlows).toEqual({
+      default: {
+        supported: ["authorization"],
+        default: "authorization",
+      },
+    });
+  });
+
   describe("parsePrice", () => {
     it("parses string amount", async () => {
       const result = await server.parsePrice("100", "cashu:mainnet" as `${string}:${string}`);
